@@ -58,7 +58,8 @@ export default defineConfig(({ mode }) => {
         define: {
             ENV_API_URL: JSON.stringify(env.VITE_ENV_API_URL),
             ENV_HEADER_NAME: JSON.stringify(env.VITE_ENV_HEADER_NAME),
-            ENV_TITLE: JSON.stringify(env.VITE_ENV_TITLE)
+            ENV_TITLE: JSON.stringify(env.VITE_ENV_TITLE),
+            ENV_CLIENT_ID: JSON.stringify(env.VITE_ENV_CLIENT_ID)
         }
     }
 })
