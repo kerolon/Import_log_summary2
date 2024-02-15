@@ -75,6 +75,14 @@
                 isLogin: false as boolean,
                 logineror: false as boolean,
             });
+            let connection: signalR.HubConnection = null;
+            const filtering: (filterBy: string) => void = (filterBy) => {
+                if (filterBy != null) {
+                    data.value.filterBy = filterBy;
+                }
+                connection.invoke("reload");
+            }
+
             const googleLoginCallback: CallbackTypes.CredentialCallback = (response) => {
                 data.value.isLogin = true;
                 axios.get(apiBaseUrl + '/api/GetToken', {
@@ -84,7 +92,7 @@
                     }
                 })
                     .then((res) => {
-                        const connection = new signalR.HubConnectionBuilder()
+                        connection = new signalR.HubConnectionBuilder()
                             .withUrl(apiBaseUrl + '/api', {
                                 headers: { "x-ms-signalr-user-id": res.data.item2 },
                                 accessTokenFactory: () => {
@@ -105,6 +113,7 @@
                                 data.value.logineror = true;
                                 console.error(error);
                             });
+
                     })
                     .catch((error) => {
                         data.value.logineror = true;
@@ -171,12 +180,6 @@
             const onNewConnection = (message) => {
                 data.value.myConnectionId = message.ConnectionId;
                 onNewMessage(message);
-            }
-            function filtering(filterBy) {
-                if (filterBy != null) {
-                    data.value.filterBy = filterBy;
-                }
-                connection.invoke("reload");
             }
             return {
                 title,
