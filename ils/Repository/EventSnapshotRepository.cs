@@ -17,7 +17,6 @@ namespace ils.Repository
         // カテゴリ別にイベントの集約結果を取得する
         public async Task<IEnumerable<BatchEvent>> GetEventSnapshotListAsync(DateTime? targetDate = null, int baseTime = 0)
         {
-            // 空のリストを作成する
             return await _batchEventSnapshotAccessor.GetAsync(targetDate, baseTime);
         }
     }
