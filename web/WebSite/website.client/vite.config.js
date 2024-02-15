@@ -7,16 +7,16 @@ import path from 'path';
 import child_process from 'child_process';
 
 const baseFolder =
-    process.env.APPDATA !== undefined && process.env.APPDATA !== ''
-        ? `${process.env.APPDATA}/ASP.NET/https`
-        : `${process.env.HOME}/.aspnet/https`;
+    window.process.env.APPDATA !== undefined && window.process.env.APPDATA !== ''
+        ? `${window.process.env.APPDATA}/ASP.NET/https`
+        : `${window.process.env.HOME}/.aspnet/https`;
 
-const certificateArg = process.argv.map(arg => arg.match(/--name=(?<value>.+)/i)).filter(Boolean)[0];
+const certificateArg = window.process.argv.map(arg => arg.match(/--name=(?<value>.+)/i)).filter(Boolean)[0];
 const certificateName = certificateArg ? certificateArg.groups.value : "website.client";
 
 if (!certificateName) {
     console.error('Invalid certificate name. Run this script in the context of an npm/yarn script or pass --name=<<app>> explicitly.')
-    process.exit(-1);
+    window.process.exit(-1);
 }
 
 const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
@@ -40,7 +40,7 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, process.cwd());
+    const env = loadEnv(mode, window.process.cwd());
     return {
         plugins: [plugin()],
         resolve: {
