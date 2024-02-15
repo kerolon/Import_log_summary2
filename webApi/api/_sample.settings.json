@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "AzureWebJobsDashboard": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "AzureSignalRConnectionString": "",
+    "AzureSignalRServiceTransportType": "Transient",
+    "GoogleLoginClientId": "",
+    "AllowedDomain": "",
+    "TokenSecret": "",
+    "StorageConnectionString": "",
+    "BaseTime": "0",
+    "AddDataToken": ""
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "https://localhost:5173",
+    "CORSCredentials": true
+  }
+}

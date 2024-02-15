@@ -1,0 +1,39 @@
+# ビルドアーティファクト
+bin/
+obj/
+
+# パッケージ
+*.nuget.props
+*.nuget.targets
+*.user
+
+# 外部ライブラリ
+web/wwwroot/lib/
+
+# ツールの依存関係
+/.paket/
+/packages/
+
+# ログファイル
+*.log
+
+# Visual Studio Codeの設定ファイル
+.vscode/
+.vs/
+
+# デバッグ情報
+*.pdb
+*.dll.mdb
+
+# ビルドスクリプト
+build/
+
+# 圧縮ファイル
+*.min.*
+
+# マッピングファイル
+*.map
+
+#デバッグ用ファイル
+__blobstorage__/
+__azurite*
