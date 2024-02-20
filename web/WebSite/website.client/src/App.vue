@@ -93,22 +93,33 @@
                     }
                 })
                     .then((res) => {
+                        const jwttoken = res.data.item1;
                         connection = new signalR.HubConnectionBuilder()
                             .withUrl(apiBaseUrl + '/api', {
                                 headers: { "x-ms-signalr-user-id": res.data.item2 },
                                 accessTokenFactory: () => {
-                                    return res.data.item1;
+                                    return jwttoken;
                                 }
                             })
                             .configureLogging(signalR.LogLevel.Information)
                             .withAutomaticReconnect()
                             .build();
                         connection.on('newMessage', onNewMessage);
-                        connection.on('newConnection', onNewConnection);
+                        connection.on('newConnection', (message) => {
+                            console.log('newConn')
+                            data.value.myConnectionId = message.ConnectionId;
+                            onNewMessage(message.Logs);
+                        });
                         connection.start()
                             .then(() => {
                                 data.value.ready = true;
-                                connection.invoke("reload");
+                                console.log("connection start");
+                                axios.get(apiBaseUrl + '/api/GetData', {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': 'Bearer ' + jwttoken
+                                    }
+                                }).then((message) => onNewMessage(message));
                             })
                             .catch((error) => {
                                 data.value.logineror = true;
@@ -151,6 +162,7 @@
             const apiBaseUrl = props.env.VITE_ENV_API_URL;
             
             const onNewMessage = (messages) => {
+                console.log(messages);
                 if (messages.map) {
                     const logdata = messages.map(message => {
                         return {
@@ -178,10 +190,6 @@
                     });
                 }
             };
-            const onNewConnection = (message) => {
-                data.value.myConnectionId = message.ConnectionId;
-                onNewMessage(message.Logs);
-            }
             return {
                 title,
                 data,
