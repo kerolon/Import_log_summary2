@@ -15,5 +15,8 @@
     <ProjectReference Include="..\core\ils.core.csproj" />
     <ProjectReference Include="..\ils.infrastructure.abtract\ils.infrastructure.abstract.csproj" />
   </ItemGroup>
-
+  <ItemGroup>
+	  <InternalsVisibleTo Include="ils.tests" />
+	  <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
 </Project>

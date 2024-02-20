@@ -41,6 +41,7 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd());
+    console.log(env);
     return {
         plugins: [plugin()],
         resolve: {
@@ -54,12 +55,6 @@ export default defineConfig(({ mode }) => {
                 key: fs.readFileSync(keyFilePath),
                 cert: fs.readFileSync(certFilePath),
             }
-        },
-        define: {
-            ENV_API_URL: JSON.stringify(env.VITE_ENV_API_URL),
-            ENV_HEADER_NAME: JSON.stringify(env.VITE_ENV_HEADER_NAME),
-            ENV_TITLE: JSON.stringify(env.VITE_ENV_TITLE),
-            ENV_CLIENT_ID: JSON.stringify(env.VITE_ENV_CLIENT_ID)
         }
     }
 })
