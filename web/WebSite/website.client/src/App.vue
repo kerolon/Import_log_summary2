@@ -64,8 +64,9 @@
             LogSort,
             LogView
         },
-        setup() {
-            const title = ref(ENV_TITLE);
+        props: ['env'],
+        setup(props) {
+            const title = ref(props.env.VITE_ENV_TITLE);
             const data = ref({
                 logs: [] as Array<LogData>,
                 myConnectionId: '' as string,
@@ -144,10 +145,10 @@
                 });
             }
 
-            const headerName = ref<HeaderName>(JSON.parse(ENV_HEADER_NAME));
+            const headerName = ref<HeaderName>(JSON.parse(props.env.VITE_ENV_HEADER_NAME));
 
             const filters = ref<Array<Filter>>([]);
-            const apiBaseUrl = ENV_API_URL;
+            const apiBaseUrl = props.env.VITE_ENV_API_URL;
             
             const onNewMessage = (messages) => {
                 if (messages.map) {
