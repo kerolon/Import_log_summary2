@@ -180,7 +180,7 @@
             };
             const onNewConnection = (message) => {
                 data.value.myConnectionId = message.ConnectionId;
-                onNewMessage(message);
+                onNewMessage(message.Logs);
             }
             return {
                 title,

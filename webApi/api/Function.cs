@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -180,9 +181,8 @@ namespace api
         [FunctionName(nameof(OnConnected))]
         public async Task OnConnected([SignalRTrigger] InvocationContext invocationContext, ILogger logger)
         {
-            await Clients.All.SendAsync(NewConnectionTarget, new NewConnection(invocationContext.ConnectionId));
             var logs = await _eventService.GetEventSnapshotsAsync();
-            await Clients.User(invocationContext.UserId).SendAsync(NewMessageTarget, logs);
+            await Clients.All.SendAsync(NewConnectionTarget, new NewMessage(invocationContext.ConnectionId, logs));
             logger.LogInformation($"{invocationContext.ConnectionId} has connected");
         }
         [FunctionAuthorize]
@@ -197,13 +197,15 @@ namespace api
         public void OnDisconnected([SignalRTrigger] InvocationContext invocationContext)
         {
         }
-        private class NewConnection
+        private class NewMessage
         {
             public string ConnectionId { get; }
+            public IEnumerable<BatchEvent> Logs { get; }
 
-            public NewConnection(string connectionId)
+            public NewMessage(string connectionId, IEnumerable<BatchEvent> logs)
             {
                 ConnectionId = connectionId;
+                Logs = logs;
             }
         }
 

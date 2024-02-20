@@ -12,6 +12,7 @@ app.use(vue3GoogleLogin, {
 })
 app.mount('#app')
 app.config.errorHandler = (err, instance, info) => {
+    //クライアントでもエラーログが見れるように敢えてコンソールに出力
     console.log(err);
     console.log(instance);
     console.log(info);
