@@ -64,8 +64,9 @@
             LogSort,
             LogView
         },
-        setup() {
-            const title = ref(ENV_TITLE);
+        props: ['env'],
+        setup(props) {
+            const title = ref(props.env.VITE_ENV_TITLE);
             const data = ref({
                 logs: [] as Array<LogData>,
                 myConnectionId: '' as string,
@@ -75,6 +76,14 @@
                 isLogin: false as boolean,
                 logineror: false as boolean,
             });
+            let connection: signalR.HubConnection = null;
+            const filtering: (filterBy: string) => void = (filterBy) => {
+                if (filterBy != null) {
+                    data.value.filterBy = filterBy;
+                }
+                connection.invoke("reload");
+            }
+
             const googleLoginCallback: CallbackTypes.CredentialCallback = (response) => {
                 data.value.isLogin = true;
                 axios.get(apiBaseUrl + '/api/GetToken', {
@@ -84,27 +93,38 @@
                     }
                 })
                     .then((res) => {
-                        const connection = new signalR.HubConnectionBuilder()
+                        const jwttoken = res.data.item1;
+                        connection = new signalR.HubConnectionBuilder()
                             .withUrl(apiBaseUrl + '/api', {
                                 headers: { "x-ms-signalr-user-id": res.data.item2 },
                                 accessTokenFactory: () => {
-                                    return res.data.item1;
+                                    return jwttoken;
                                 }
                             })
                             .configureLogging(signalR.LogLevel.Information)
                             .withAutomaticReconnect()
                             .build();
                         connection.on('newMessage', onNewMessage);
-                        connection.on('newConnection', onNewConnection);
+                        connection.on('newConnection', (message) => {
+                            data.value.myConnectionId = message.ConnectionId;
+                            onNewMessage(message.Logs);
+                        });
                         connection.start()
                             .then(() => {
                                 data.value.ready = true;
-                                connection.invoke("reload");
+                                console.log("connection start");
+                                axios.get(apiBaseUrl + '/api/GetData', {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': 'Bearer ' + jwttoken
+                                    }
+                                }).then((message) => onNewMessage(message));
                             })
                             .catch((error) => {
                                 data.value.logineror = true;
                                 console.error(error);
                             });
+
                     })
                     .catch((error) => {
                         data.value.logineror = true;
@@ -135,10 +155,10 @@
                 });
             }
 
-            const headerName = ref<HeaderName>(JSON.parse(ENV_HEADER_NAME));
+            const headerName = ref<HeaderName>(JSON.parse(props.env.VITE_ENV_HEADER_NAME));
 
             const filters = ref<Array<Filter>>([]);
-            const apiBaseUrl = ENV_API_URL;
+            const apiBaseUrl = props.env.VITE_ENV_API_URL;
             
             const onNewMessage = (messages) => {
                 if (messages.map) {
@@ -168,16 +188,6 @@
                     });
                 }
             };
-            const onNewConnection = (message) => {
-                data.value.myConnectionId = message.ConnectionId;
-                onNewMessage(message);
-            }
-            function filtering(filterBy) {
-                if (filterBy != null) {
-                    data.value.filterBy = filterBy;
-                }
-                connection.invoke("reload");
-            }
             return {
                 title,
                 data,

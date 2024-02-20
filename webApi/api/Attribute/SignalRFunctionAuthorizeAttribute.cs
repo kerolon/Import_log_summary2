@@ -3,10 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
-namespace api
+namespace api.Attribute
 {
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
-    internal class FunctionAuthorizeAttribute : SignalRFilterAttribute
+    internal class SignalRFunctionAuthorizeAttribute : SignalRFilterAttribute
     {
         private const string AdminKey = "admin";
 

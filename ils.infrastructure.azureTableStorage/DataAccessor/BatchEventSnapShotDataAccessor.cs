@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure.Data.Tables;
 using ils.core.Domain.Entities;
+using ils.infrastructure.azureTableStorage.Client;
 using ils.infrastructure.azureTableStorage.DataEntity;
 
-namespace ils.infrastructure.DataAccessor 
+namespace ils.infrastructure.DataAccessor
 {
     internal class BatchEventSnapShotDataAccessor : TableStorageDataAccessorBase, IBatchEventSnapShotDataAccessor
     {
-        public BatchEventSnapShotDataAccessor(TableServiceClient azureTableStorageClient, string tableName) : base(azureTableStorageClient, tableName)
+        public BatchEventSnapShotDataAccessor(IDatabaseClient azureTableStorageClient, string tableName) : base(azureTableStorageClient, tableName)
         {
         }
 

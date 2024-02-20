@@ -1,15 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using api.Attribute;
 using Google.Apis.Auth;
 using ils.Apps;
 using ils.core.Domain.Entities;
+using JWT.Algorithms;
+using JWT.Builder;
+using JWT.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -76,6 +78,47 @@ namespace api
         }
 
 
+        [FunctionName("GetData")]
+        [OpenApiOperation(operationId: "GetData", tags: new[] { "internal" }, Summary = "Dataの取得", Description = "SignalRクライアントからEventDataの取得を行うAPI", Deprecated = false, Visibility = Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums.OpenApiVisibilityType.Important)]
+        [OpenApiParameter(name: "Authorization", In = Microsoft.OpenApi.Models.ParameterLocation.Header, Summary = "認証用ヘッダ", Description = "SignalRのコネクションを張った際に発行されたトークンをBearer (トークン)の形式で設定", Required = true)]
+        [OpenApiResponseWithoutBody(statusCode: HttpStatusCode.NoContent, Description = "リクエスト成功")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.BadRequest, "text/plain", typeof(string), Description = "authorizationヘッダがない事によるエラー")]
+        [OpenApiResponseWithBody(statusCode: HttpStatusCode.Unauthorized, "text/plain", typeof(string), Description = "token不正によるエラー")]
+        public async Task<IActionResult> Run2([HttpTrigger(AuthorizationLevel.Anonymous, nameof(HttpMethods.Get))] HttpRequest req, IBinder binder, ILogger logger)
+        {
+            logger.LogInformation($"Get.");
+            if (!req.Headers.ContainsKey("Authorization"))
+            {
+                return new BadRequestObjectResult("authorization header is required");
+            }
+            var authheader = req.Headers["Authorization"].ToString();
+            if (!authheader.Contains("Bearer "))
+            {
+                return new BadRequestObjectResult("authorization header is invalid");
+            }
+            string token = authheader.Remove(0, 7); //remove Bearer 
+            (bool isValid, string errMessage) = VerifyJWT(token);
+            if (!isValid)
+            {
+                return new UnauthorizedObjectResult("Invalid token:" + errMessage);
+            }
+
+            var signalRMessages = binder.Bind<IAsyncCollector<SignalRMessage>>(new SignalRAttribute
+            {
+                ConnectionStringSetting = _appSettings.SignalRConnectionStringSetting,
+                HubName = _appSettings.SignalRHubName
+            });
+            var logs = await _eventService.GetEventSnapshotsAsync();
+            await signalRMessages.AddAsync(
+                new SignalRMessage
+                {
+                    Target = NewMessageTarget,
+                    Arguments = new[] { logs },
+                });
+            return new NoContentResult();
+        }
+
+
         [FunctionName(nameof(GetToken))]
         [OpenApiOperation(operationId: nameof(GetToken), tags: new[] {"signalR"}, Summary ="SignalR用のToken取得" ,Description ="GoogleLoginによって取得したCredentialの正当性を検査し、SignalR用のJWTトークンを生成して返却します")]
         [OpenApiParameter(name: "Authorization",In =Microsoft.OpenApi.Models.ParameterLocation.Header,Required =true,Summary = "GoogleLoginによって取得したCredential", Description = "「Bearer (GoogleLoginによって取得したCredential)」の形式で指定してください")]
@@ -96,52 +139,52 @@ namespace api
             {
                 return new UnauthorizedObjectResult("Invalid token");
             }
-            var tokenString = GenerateToken(userId);
+            var tokenString = GenerateJWT(userId);
 
             return new OkObjectResult((token:tokenString,uid:userId));
         }
 
+        private (bool isValid,string message) VerifyJWT(string token)
+        {
+            var secret = _appSettings.TokenSecret;
+            try
+            {
+                var json = JwtBuilder.Create()
+                     .WithAlgorithm(new HMACSHA256Algorithm())
+                     .WithSecret(secret)
+                     .MustVerifySignature()
+                     .Decode(token);
+            }
+            catch (TokenNotYetValidException)
+            {
+                return (false, "Token is not valid yet");
+            }
+            catch (TokenExpiredException)
+            {
+                return (false, "Token has expired");
+            }
+            catch (SignatureVerificationException)
+            {
+                return (false , "Token has invalid signature");
+            }
+
+            return (true,string.Empty);
+        }
         /// <summary>
         /// SignalRで認証に使用するJWTを生成する
         /// </summary>
         /// <param name="userName"></param>
         /// <returns></returns>
-        private string GenerateToken(string userName)
+        private string GenerateJWT(string userName)
         {
-            Func<string, string> base64URL = (string input) =>
-            {
-
-                var reg = new Regex("=+$");
-                return reg.Replace(Convert.ToBase64String(Encoding.UTF8.GetBytes(input)), "")
-                .Replace('/', '_')
-                .Replace("=", "");
-            };
-            var header = new {
-                alg = "HS256",
-                typ = "JWT"
-            };
-
-            var encodedHeader = base64URL(JsonSerializer.Serialize(header));
-
-            var payload = new {
-                iat = DateTimeOffset.Now.ToUnixTimeSeconds(),
-                uid = userName,
-                exp = DateTimeOffset.Now.AddDays(1).ToUnixTimeSeconds(),
-                admin = true
-            };
-
-            var encodedPayload = base64URL(JsonSerializer.Serialize(payload));
-            var token = encodedHeader + "." + encodedPayload;
             var secret = _appSettings.TokenSecret;
-
-            var signature = string.Empty;
-            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret)))
-            {
-                var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(token));
-                signature =BitConverter.ToString(hash).Replace("-","").ToLower(); 
-            }
-            var signedToken = token + "." + base64URL(signature);
-            return signedToken;
+            var jwtToken = new JwtBuilder()
+                .WithAlgorithm(new HMACSHA256Algorithm())
+                .WithSecret(secret)
+                .AddClaim("uid", userName)
+                .AddClaim("admin", true)
+                .Encode();
+            return jwtToken;
         }
 
         /// <summary>
@@ -180,12 +223,11 @@ namespace api
         [FunctionName(nameof(OnConnected))]
         public async Task OnConnected([SignalRTrigger] InvocationContext invocationContext, ILogger logger)
         {
-            await Clients.All.SendAsync(NewConnectionTarget, new NewConnection(invocationContext.ConnectionId));
             var logs = await _eventService.GetEventSnapshotsAsync();
-            await Clients.User(invocationContext.UserId).SendAsync(NewMessageTarget, logs);
+            await Clients.All.SendAsync(NewConnectionTarget, new NewMessage(invocationContext.ConnectionId, logs));
             logger.LogInformation($"{invocationContext.ConnectionId} has connected");
         }
-        [FunctionAuthorize]
+        [SignalRFunctionAuthorize]
         [FunctionName(nameof(Reload))]
         public async Task Reload([SignalRTrigger] InvocationContext invocationContext, ILogger logger)
         {
@@ -197,13 +239,15 @@ namespace api
         public void OnDisconnected([SignalRTrigger] InvocationContext invocationContext)
         {
         }
-        private class NewConnection
+        private class NewMessage
         {
             public string ConnectionId { get; }
+            public IEnumerable<BatchEvent> Logs { get; }
 
-            public NewConnection(string connectionId)
+            public NewMessage(string connectionId, IEnumerable<BatchEvent> logs)
             {
                 ConnectionId = connectionId;
+                Logs = logs;
             }
         }
 

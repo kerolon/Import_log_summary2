@@ -10,17 +10,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="NUnit" Version="3.13.3" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
     <PackageReference Include="NUnit.Analyzers" Version="3.6.1" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Apps\" />
-    <Folder Include="Repository\" />
-    <Folder Include="Infrastructure\" />
+    <ProjectReference Include="..\ils.infrastructure.abtract\ils.infrastructure.abstract.csproj" />
+    <ProjectReference Include="..\ils.infrastructure.azureTableStorage\ils.infrastructure.azureTableStorage.csproj" />
   </ItemGroup>
 
 </Project>
