@@ -1,6 +1,6 @@
 param location string = 'japaneast'
 var identity_name = 'ils-apps-secret-keyvault-identity'
-param keyvalut_name string = 'ils-apps-secret-keyvault'
+param keyvalut_name string = 'ils-apps-secret-kv'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identity_name

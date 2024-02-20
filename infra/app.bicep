@@ -1,11 +1,10 @@
 // リソース名
 param function_name string = 'ils-api'
 param storageAccount_name string = 'ilsstorage'
-param function_hostingPlanName string = 'ils-api-host'
 param signalr_name string = 'ils-azsignalr'
 
 //シークレット関係
-param keyvalut_name string = 'ils-apps-secret-keyvault'
+param keyvalut_name string = 'ils-apps-secret-kv'
 var keyvault_access_identity_name = 'ils-apps-secret-keyvault-identity'
 param key_name_jwttoken string = 'tokenSecret'
 param key_name_addDataToken string = 'addDataToken'
@@ -13,9 +12,6 @@ param key_name_addDataToken string = 'addDataToken'
 param location string = 'japaneast'
 
 //リソースのスペック関連
-param function_linuxFxVersion string = 'DOTNET|6.0'
-param function_sku string = 'Dynamic'
-param function_skuCode string = 'Y1'
 param signalr_skuName string = 'Free_F1'
 param signalr_tier string = 'Free'
 param signalr_capacity int = 1
@@ -23,6 +19,10 @@ param signalr_capacity int = 1
 param googleLoginClientId string = ''
 param googleLoginAllowedDomain string = 'pa-consul.co.jp'
 
+//SignalRClientがホストされるドメイン
+param webclient_domain string = ''
+
+//作成済みのKeyVaultアクセス用のマネージドID
 resource keyvault_access_identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing ={
   name: keyvault_access_identity_name
 }
@@ -30,7 +30,7 @@ resource keyvault_access_identity 'Microsoft.ManagedIdentity/userAssignedIdentit
 //API作成
 resource function 'Microsoft.Web/sites@2023-01-01' = {
   name: function_name
-  kind: 'functionapp,linux'
+  kind: 'functionapp'
   location: location
   tags: {}
   properties: {
@@ -47,6 +47,10 @@ resource function 'Microsoft.Web/sites@2023-01-01' = {
         }
         {
           name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount_name};AccountKey=${listKeys(storageAccount.id, '2019-06-01').keys[0].value};EndpointSuffix=core.windows.net'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount_name};AccountKey=${listKeys(storageAccount.id, '2019-06-01').keys[0].value};EndpointSuffix=core.windows.net'
         }
         {
@@ -93,16 +97,16 @@ resource function 'Microsoft.Web/sites@2023-01-01' = {
       cors: {
         allowedOrigins: [
           'https://portal.azure.com'
+          webclient_domain
         ]
+        supportCredentials: true
       }
       use32BitWorkerProcess: true
       ftpsState: 'disabled'
-      linuxFxVersion: function_linuxFxVersion
       keyVaultReferenceIdentity: keyvault_access_identity.id
     }    
     clientAffinityEnabled: false
     httpsOnly: true
-    serverFarmId: hostingPlan.id
   }
   identity: {
     type: 'SystemAssigned, UserAssigned'
@@ -112,22 +116,6 @@ resource function 'Microsoft.Web/sites@2023-01-01' = {
   }  
   dependsOn: [
   ]
-}
-
-//APIのホスティングサーバ
-resource hostingPlan 'Microsoft.Web/serverfarms@2023-01-01' = {
-  name: function_hostingPlanName
-  location: location
-  kind: 'linux'
-  tags: {}
-  properties: {
-    reserved: true
-  }
-  sku: {
-    tier: function_sku
-    name: function_skuCode
-  }
-  dependsOn: []
 }
 
 //ストレージアカウントはFunctionにも使うしFunctionで動くアプリでも使う
@@ -222,11 +210,29 @@ resource signalr 'Microsoft.SignalRService/SignalR@2023-08-01-preview' = {
 // Functionがテーブルにアクセスできるようにする
 var tableStorageAdmin_roleDefinitionId = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 resource tableStorageAdmin_roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(function.id,apps_table.id,tableStorageAdmin_roleDefinitionId, resourceGroup().id)
+  name: guid(function.id,apps_table.id,tableStorageAdmin_roleDefinitionId, resourceGroup().id,'５')
   properties: {
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', tableStorageAdmin_roleDefinitionId)
     principalId: function.identity.principalId
     principalType: 'ServicePrincipal'
   }
   scope: apps_table
+  dependsOn: [
+    
+  ]
+}
+
+// FunctionがSignalRにアクセスできるようにする
+var signalrApp_roleDefinitionId = '420fcaa2-552c-430f-98ca-3264be4806c7'
+resource signalrApp_roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(function.id,signalr.id,signalrApp_roleDefinitionId, resourceGroup().id)
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', signalrApp_roleDefinitionId)
+    principalId: function.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+  scope: signalr
+  dependsOn: [
+    
+  ]
 }
