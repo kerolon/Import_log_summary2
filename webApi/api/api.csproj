@@ -18,9 +18,6 @@
     <ProjectReference Include="..\..\ils\ils.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="content\index.html">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

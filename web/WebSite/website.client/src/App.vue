@@ -106,7 +106,6 @@
                             .build();
                         connection.on('newMessage', onNewMessage);
                         connection.on('newConnection', (message) => {
-                            console.log('newConn')
                             data.value.myConnectionId = message.ConnectionId;
                             onNewMessage(message.Logs);
                         });
@@ -162,7 +161,6 @@
             const apiBaseUrl = props.env.VITE_ENV_API_URL;
             
             const onNewMessage = (messages) => {
-                console.log(messages);
                 if (messages.map) {
                     const logdata = messages.map(message => {
                         return {
